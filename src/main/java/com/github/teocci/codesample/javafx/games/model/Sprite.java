@@ -110,10 +110,10 @@ public class Sprite
         return x >= positionX && x <= positionX + boundaries.getWidth() && y >= positionY && y <= positionY + boundaries.getHeight();
     }
 
-    public void move(Point offset)
+    public void move(Point point)
     {
-        positionX += offset.x;
-        positionY += offset.y;
+        positionX += point.x;
+        positionY += point.y;
     }
 
     public String toString()

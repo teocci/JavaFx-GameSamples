@@ -1,5 +1,6 @@
 package com.github.teocci.codesample.javafx.games;
 
+import com.github.teocci.codesample.javafx.games.engine.EngineConnector;
 import com.github.teocci.codesample.javafx.games.model.Sprite;
 import javafx.application.Application;
 import javafx.geometry.Rectangle2D;
@@ -35,7 +36,7 @@ public class Main extends Application
     private static final Point PIECE_CENTER = new Point(PIECE_SIZE / 2, PIECE_SIZE / 2);
 
     private Sprite[] pieces = new Sprite[32];
-    private String position;
+    private String position = "";
 
     private boolean isMove = false;
 
@@ -56,11 +57,16 @@ public class Main extends Application
     };
 
     private GraphicsContext gc;
+    private EngineConnector engine;
+
+    private boolean pcTurn;
 
     @Override
     public void start(final Stage stage)
     {
         stage.setTitle("Event Handling");
+
+        engine = new EngineConnector();
 
         Pane pane = new Pane();
 
@@ -95,19 +101,26 @@ public class Main extends Application
                 System.out.println("MOUSE_RELEASED (" + event.getX() + ", " + event.getY() + ")");
                 System.out.println("PIECE_POS (" + pieces[pieceIndex].getPosition().x + ", " + pieces[pieceIndex].getPosition().y + ")");
                 isMove = false;
+                pieces[pieceIndex].setPosition(event.getX() - dx, event.getY() - dy);
                 Point midPoint = getOldMidPoint(pieces[pieceIndex].getPosition());
                 System.out.println("MID_POS (" + midPoint.x + ", " + midPoint.y + ")");
 
                 newPos = getNewPoint(midPoint);
+                System.out.println("OLD_POS (" + oldPos.x + ", " + oldPos.y + ")");
                 System.out.println("NEW_POS (" + newPos.x + ", " + newPos.y + ")");
                 str = toChessNote(oldPos) + toChessNote(newPos);
+                System.out.println("MOVE (" + str + ")");
                 move(str);
-                if (oldPos.equals(newPos)) {
+                if (!oldPos.equals(newPos)) {
                     position += str + " ";
+                    pcTurn = true;
                 }
                 pieces[pieceIndex].setPosition(newPos);
 //                pieces[pieceIndex].move(ADD_OFFSET);
                 update();
+                if (pcTurn) {
+//                    pcMove();
+                }
             }
         });
 
@@ -129,6 +142,8 @@ public class Main extends Application
         loadPosition();
         update();
 
+        pcTurn = false;
+
 //        root.getChildren().add(layout);
 //        root.getChildren().add(canvas);
         Scene scene = new Scene(layout);
@@ -147,15 +162,43 @@ public class Main extends Application
         }
     }
 
+    private void pcMove()
+    {
+        str = engine.getNextMove(position);
+        System.out.println("PC_MOVE (" + str + ")");
+
+        Point oldPos = toCoord(str.charAt(0), str.charAt(1));
+        Point newPos = toCoord(str.charAt(2), str.charAt(3));
+
+        System.out.println("PC_MOVE <oldPos> (" + oldPos.x + ", " + oldPos.y + ")");
+        for (int i = 0; i < 32; i++) {
+            if (pieces[i].getPosition() == oldPos) pieceIndex = i;
+        }
+
+        for (int k = 0; k < 50; k++) {
+            Point p = new Point((newPos.x - oldPos.x) / 50, (newPos.y - oldPos.y) / 50);
+            pieces[pieceIndex].move(p);
+            for (Sprite piece : pieces) {
+                piece.render(gc);
+            }
+        }
+
+        move(str);
+        position += str + " ";
+        pieces[pieceIndex].setPosition(newPos);
+        pcTurn = false;
+        update();
+    }
+
     private Point getOldMidPoint(Point pos)
     {
         return new Point(pos.x + PIECE_CENTER.x, pos.y + PIECE_CENTER.y);
     }
 
-    private Point getNewPoint(Point pos)
+    private Point getNewPoint(Point point)
     {
-        int xIndex = (pos.x - OFFSET_SIZE) / PIECE_SIZE;
-        int yIndex = (pos.y - OFFSET_SIZE) / PIECE_SIZE;
+        int xIndex = (point.x - OFFSET_SIZE) / PIECE_SIZE;
+        int yIndex = (point.y - OFFSET_SIZE) / PIECE_SIZE;
 
         xIndex = PIECE_SIZE * xIndex + OFFSET_SIZE;
         yIndex = PIECE_SIZE * yIndex + OFFSET_SIZE;
@@ -205,18 +248,18 @@ public class Main extends Application
 //            move(position.substr(i, 4));
     }
 
-    private String toChessNote(Point p)
+    private String toChessNote(Point point)
     {
         String s = "";
-        s += (char) (p.x / PIECE_SIZE + 97);
-        s += (char) (7 - p.y / PIECE_SIZE + 49);
+        s += (char) ((point.x - OFFSET_SIZE) / PIECE_SIZE + 97);
+        s += (char) ((point.y - OFFSET_SIZE) / PIECE_SIZE + 49);
         return s;
     }
 
     private Point toCoord(char a, char b)
     {
-        int x = (a - 97) * PIECE_SIZE;
-        int y = (7 - b + 49) * PIECE_SIZE;
+        int x = (a - 97) * PIECE_SIZE + OFFSET_SIZE;
+        int y = (7 - b + 49) * PIECE_SIZE + OFFSET_SIZE;
         return new Point(x, y);
     }
 
