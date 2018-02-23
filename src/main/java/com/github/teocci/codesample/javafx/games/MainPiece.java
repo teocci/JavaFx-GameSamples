@@ -66,16 +66,6 @@ public class MainPiece extends Application
         board = new Board(canvas.getGraphicsContext2D());
         board.loadPosition();
 
-//        int index = 0;
-//        for (Piece piece : pieces) {
-//            piece = new Piece();
-//            piece.setImage(IMG_FIGURES);
-//            pieces[index] = piece;
-//            index++;
-//        }
-
-//        root.getChildren().add(layout);
-//        root.getChildren().add(canvas);
         Scene scene = new Scene(layout);
         stage.setScene(scene);
         stage.show();
