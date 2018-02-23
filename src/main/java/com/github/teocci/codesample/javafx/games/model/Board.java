@@ -185,6 +185,8 @@ public class Board
             app.showPopupMessage("Illegal move");
         }
         render();
+        readyToMove();
+
 
 //        pieces[currentIndex].setPosition(newPoint);
 //                pieces[currentIndex].move(ADD_OFFSET);
@@ -192,6 +194,18 @@ public class Board
         if (pcTurn) {
             pcMove();
         }
+    }
+
+    private void readyToMove()
+    {
+        currentIndex = -1;
+        currentPiece = null;
+
+        oldPos = null;
+        newPos = null;
+
+        oldPoint = null;
+        newPoint = null;
     }
 
 
@@ -203,8 +217,8 @@ public class Board
         final Matcher matcher = movePattern.matcher(currentMove);
 
         if (matcher.find()) {
-            String oldPos = matcher.group(1);
-            String newPos = matcher.group(2);
+            oldPos = matcher.group(1);
+            newPos = matcher.group(2);
 
 //            System.out.println("PC_MOVE <oldPos> (" + oldPos.x + ", " + oldPos.y + ")");
 
@@ -234,6 +248,7 @@ public class Board
             pieces[currentIndex].setPosition(newPos);
             pcTurn = false;
             render();
+            readyToMove();
         }
     }
 
