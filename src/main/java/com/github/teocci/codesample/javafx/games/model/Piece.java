@@ -7,6 +7,8 @@ import javafx.scene.canvas.GraphicsContext;
 
 import java.awt.*;
 
+import static com.github.teocci.codesample.javafx.games.enums.PieceColor.BLACK;
+import static com.github.teocci.codesample.javafx.games.enums.PieceColor.WHITE;
 import static com.github.teocci.codesample.javafx.games.model.Board.OFFSET_SIZE;
 import static com.github.teocci.codesample.javafx.games.model.Board.PIECE_SIZE;
 
@@ -17,7 +19,7 @@ import static com.github.teocci.codesample.javafx.games.model.Board.PIECE_SIZE;
  */
 public class Piece
 {
-    public static final String IMG_FIGURES = "/images/figures.png";
+    private static final String IMG_FIGURES = "/images/figures.png";
 
     private PieceType type;
     private PieceColor color;
@@ -42,7 +44,7 @@ public class Piece
     {
         int x = (position.charAt(0) - 97) * PIECE_SIZE + OFFSET_SIZE;
         int y = (7 - position.charAt(1) + 49) * PIECE_SIZE + OFFSET_SIZE;
-        System.out.println("PIECE <toCoordinates> (X: " + x + " Y: " + y + ")");
+//        System.out.println("PIECE <toCoordinates> (X: " + x + " Y: " + y + ")");
 
         return new Point(x, y);
     }
@@ -90,7 +92,7 @@ public class Piece
 
     public boolean contains(String pos)
     {
-        System.out.println("PIECE (Pos: " + position + " P: " + pos + ")");
+//        System.out.println("PIECE (Pos: " + position + " P: " + pos + ")");
         return position.equals(pos);
     }
 
@@ -102,6 +104,7 @@ public class Piece
     public void kill()
     {
         alive = false;
+        sprite.setPosition(-100, -100);
     }
 
     public boolean isAlive()
@@ -111,6 +114,16 @@ public class Piece
 
     public boolean isEnemy(Piece currentPiece)
     {
-        return color.equals(currentPiece.getColor());
+        return !color.equals(currentPiece.getColor());
+    }
+
+    public boolean isWhite()
+    {
+        return color.equals(WHITE);
+    }
+
+    public boolean isBlack()
+    {
+        return color.equals(BLACK);
     }
 }

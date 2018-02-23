@@ -11,6 +11,20 @@ import java.io.*;
  */
 public class Stockfish
 {
+    private static final String CMD_IS_READY = "isready";
+    private static final String CMD_READY_OK = "readyok";
+    private static final String CMD_NEXT_MOVE = "position startpos moves ";
+    private static final String CMD_FEN_MOVE = "position fen ";
+    private static final String CMD_GO_MOVETIME = "go movetime ";
+    private static final String CMD_DRAW = "d";
+    private static final String CMD_QUIT = "quit";
+
+    private static final String OUT_BEST_MOVE = "bestmove ";
+    private static final String OUT_INFO_DEPTH = "info depth ";
+    private static final String OUT_SCORE_CP = "score cp ";
+    private static final String OUT_NODES = " nodes";
+    private static final String OUT_UPPER_BOUND_NODES = " upperbound nodes";
+
     private Process engineProcess;
     private BufferedReader processReader;
     private OutputStreamWriter processWriter;
@@ -42,7 +56,7 @@ public class Stockfish
     /**
      * Takes in any valid UCI command and executes it
      *
-     * @param command
+     * @param command string command to execute
      */
     public void sendCommand(String command)
     {
@@ -61,20 +75,22 @@ public class Stockfish
      * @param waitTime Time in milliseconds for which the function waits before
      *                 reading the output. Useful when a long running command is
      *                 executed
-     * @return Raw output from Stockfish
+     * @return Raw output from Stockfish execution
      */
     public String getOutput(int waitTime)
     {
-        StringBuffer buffer = new StringBuffer();
+        StringBuilder buffer = new StringBuilder();
         try {
             Thread.sleep(waitTime);
-            sendCommand("isready");
+            sendCommand(CMD_IS_READY);
             while (true) {
                 String text = processReader.readLine();
-                if (text.equals("readyok"))
+                if (text.equals(CMD_READY_OK)) {
                     break;
-                else
-                    buffer.append(text + "\n");
+                } else {
+                    buffer.append(text);
+                    buffer.append("\n");
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -86,22 +102,23 @@ public class Stockfish
      * This function returns the best move for a given position after
      * calculating for 'waitTime' ms
      *
-     * @param position      Position string
+     * @param position Position string
      * @param waitTime in milliseconds
      * @return Best Move in PGN format
      */
     public String getBestMove(String position, int waitTime)
     {
-        sendCommand("position startpos moves " + position);
+        String cmd = CMD_NEXT_MOVE + position;
+        sendCommand(cmd);
+//        System.out.println(cmd);
 
-        System.out.println("position startpos moves " + position);
-        sendCommand("go movetime " + waitTime);
+        cmd = CMD_GO_MOVETIME + waitTime;
+        sendCommand(cmd);
 
-        String output = getOutput(waitTime + 20);
+        String output = getOutput(waitTime + 50);
+//        System.out.println("getOutput() " + output);
 
-        System.out.println("getOutput() " + output);
-
-        return output.split("bestmove ")[1].split(" ")[0];
+        return output.split(OUT_BEST_MOVE)[1].split(" ")[0];
     }
 
     /**
@@ -114,9 +131,9 @@ public class Stockfish
      */
     public String getFENBestMove(String fen, int waitTime)
     {
-        sendCommand("position fen " + fen);
-        sendCommand("go movetime " + waitTime);
-        return getOutput(waitTime + 20).split("bestmove ")[1].split(" ")[0];
+        sendCommand(CMD_FEN_MOVE + fen);
+        sendCommand(CMD_GO_MOVETIME + waitTime);
+        return getOutput(waitTime + 20).split(OUT_BEST_MOVE)[1].split(" ")[0];
     }
 
     /**
@@ -125,7 +142,7 @@ public class Stockfish
     public void stopEngine()
     {
         try {
-            sendCommand("quit");
+            sendCommand(CMD_QUIT);
             processReader.close();
             processWriter.close();
         } catch (IOException e) {
@@ -141,8 +158,8 @@ public class Stockfish
      */
     public String getLegalMoves(String fen)
     {
-        sendCommand("position fen " + fen);
-        sendCommand("d");
+        sendCommand(CMD_FEN_MOVE + fen);
+        sendCommand(CMD_DRAW);
         return getOutput(0).split("Legal moves: ")[1];
     }
 
@@ -153,8 +170,8 @@ public class Stockfish
      */
     public void drawBoard(String fen)
     {
-        sendCommand("position fen " + fen);
-        sendCommand("d");
+        sendCommand(CMD_FEN_MOVE + fen);
+        sendCommand(CMD_DRAW);
 
         String[] rows = getOutput(0).split("\n");
 
@@ -172,19 +189,21 @@ public class Stockfish
      */
     public float getEvalScore(String fen, int waitTime)
     {
-        sendCommand("position fen " + fen);
-        sendCommand("go movetime " + waitTime);
+        sendCommand(CMD_FEN_MOVE + fen);
+        sendCommand(CMD_GO_MOVETIME + waitTime);
 
         float evalScore = 0.0f;
         String[] dump = getOutput(waitTime + 20).split("\n");
         for (int i = dump.length - 1; i >= 0; i--) {
-            if (dump[i].startsWith("info depth ")) {
+            if (dump[i].startsWith(OUT_INFO_DEPTH)) {
                 try {
-                    evalScore = Float.parseFloat(dump[i].split("score cp ")[1]
-                            .split(" nodes")[0]);
+                    evalScore = Float.parseFloat(
+                            dump[i].split(OUT_SCORE_CP)[1].split(OUT_NODES)[0]
+                    );
                 } catch (Exception e) {
-                    evalScore = Float.parseFloat(dump[i].split("score cp ")[1]
-                            .split(" upperbound nodes")[0]);
+                    evalScore = Float.parseFloat(
+                            dump[i].split(OUT_SCORE_CP)[1].split(OUT_UPPER_BOUND_NODES)[0]
+                    );
                 }
             }
         }

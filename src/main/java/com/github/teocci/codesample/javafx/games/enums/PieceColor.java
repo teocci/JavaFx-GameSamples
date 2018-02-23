@@ -8,12 +8,12 @@ package com.github.teocci.codesample.javafx.games.enums;
 public enum PieceColor
 {
     /**
-     * Represents a Rock.
+     * Represents the black side.
      */
-    WHITE,
+    BLACK,
 
     /**
-     * Represents a Knight.
+     * Represents the white side.
      */
-    BLACK
+    WHITE
 }

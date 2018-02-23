@@ -1,5 +1,6 @@
 package com.github.teocci.codesample.javafx.games.model;
 
+import com.github.teocci.codesample.javafx.games.ChessMain;
 import com.github.teocci.codesample.javafx.games.engine.EngineConnector;
 import com.github.teocci.codesample.javafx.games.enums.PieceColor;
 import com.github.teocci.codesample.javafx.games.enums.PieceType;
@@ -50,8 +51,9 @@ public class Board
 
     private String oldPos, newPos;
 
-    private boolean isMove = false;
+    private boolean moving = false;
     private boolean pcTurn = false;
+    private boolean validMove;
 
     private double dx = 0, dy = 0;
 
@@ -62,9 +64,12 @@ public class Board
 
     private EngineConnector engine;
 
-    public Board(GraphicsContext gc)
+    private ChessMain app;
+
+    public Board(ChessMain app, GraphicsContext gc)
     {
         this.gc = gc;
+        this.app = app;
         engine = new EngineConnector();
     }
 
@@ -77,16 +82,16 @@ public class Board
     public void loadPosition()
     {
         int index = 0;
-        for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 8; j++) {
-                int n = board[i][j];
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                int n = board[row][col];
                 if (n == 0) continue;
                 PieceType type = PieceType.values()[Math.abs(n) - 1];
                 PieceColor color = n > 0 ? WHITE : BLACK;
                 pieces[index] = new Piece(type, color);
 
-                String pos = toChessNotation(j, i);
-                System.out.println("PIECE (T: " + type + " C: " + color + " P: " + pos + ")");
+                String pos = toChessNotation(col, row);
+//                System.out.println("PIECE (T: " + type + " C: " + color + " P: " + pos + ")");
 
                 pieces[index].setPosition(pos);
 
@@ -99,37 +104,6 @@ public class Board
 //        for (int i = 0; i < moves.length(); i += 5)
 //            move(moves.substr(i, 4));
         render();
-    }
-
-    private String toChessNotation(int x, int y)
-    {
-        String s = "";
-        s += (char) (x + 97);
-        s += (char) (y + 49);
-        return s;
-    }
-
-    private String toChessNotation(double x, double y)
-    {
-        String s = "";
-        s += (char) ((x - OFFSET_SIZE) / PIECE_SIZE + 97);
-        s += (char) (8 - (y - OFFSET_SIZE) / PIECE_SIZE + 49);
-        return s;
-    }
-
-    private String toChessNotation(Point point)
-    {
-        String s = "";
-        s += (char) ((point.x - OFFSET_SIZE) / PIECE_SIZE + 97);
-        s += (char) ((point.y - OFFSET_SIZE) / PIECE_SIZE + 49);
-        return s;
-    }
-
-    private Point toCoordinates(char a, char b)
-    {
-        int x = (a - 97) * PIECE_SIZE + OFFSET_SIZE;
-        int y = (7 - b + 49) * PIECE_SIZE + OFFSET_SIZE;
-        return new Point(x, y);
     }
 
 
@@ -146,13 +120,14 @@ public class Board
 
     public void initMove(double x, double y)
     {
+        if (pcTurn) return;
         String pos = toChessNotation(x, y);
-        System.out.println("initMove (P: " + pos + ")");
+        System.out.print("initMove (P: " + pos + ") --> ");
 
         int i = 0;
         for (Piece piece : pieces) {
-            if (piece.contains(pos)) {
-                isMove = true;
+            if (piece.isWhite() && piece.contains(pos)) {
+                moving = true;
                 currentIndex = i;
                 currentPiece = piece;
 
@@ -170,7 +145,8 @@ public class Board
 
     public void onMoving(double x, double y)
     {
-        if (isMove) {
+        if (pcTurn) return;
+        if (moving) {
             currentPiece.setPosition(x - dx, y - dy);
             render();
         }
@@ -178,11 +154,13 @@ public class Board
 
     public void endMove(double x, double y)
     {
+        if (oldPos == null) return;
+        if (pcTurn) return;
         String pos = toChessNotation(x, y);
-        System.out.println("endMove (P: " + pos + ")");
+        System.out.println("(P: " + pos + ") endMove.");
 
         newPos = pos;
-        isMove = false;
+        moving = false;
 
 //        System.out.println("PIECE_POS (" + currentPiece.getPosition().x + ", " + currentPiece.getPosition().y + ")");
         pieces[currentIndex].setPosition(x - dx, y - dy);
@@ -195,19 +173,22 @@ public class Board
 //        currentMove = toChessNotation(oldPoint) + toChessNotation(newPoint);
 
         currentMove = oldPos + newPos;
+        move(currentMove);
 
-        if (!oldPoint.equals(newPoint)) {
+        if (validMove) {
             System.out.println("MOVE (" + currentMove + ")");
-            move(currentMove);
             moves += currentMove + " ";
             pcTurn = true;
+        } else {
+            pieces[currentIndex].setPosition(oldPos);
+            pcTurn = false;
+            app.showPopupMessage("Illegal move");
         }
-
-        pieces[currentIndex].setPosition(newPos);
+        render();
 
 //        pieces[currentIndex].setPosition(newPoint);
 //                pieces[currentIndex].move(ADD_OFFSET);
-        render();
+
         if (pcTurn) {
             pcMove();
         }
@@ -256,33 +237,33 @@ public class Board
         }
     }
 
-//    private Point getOldMidPoint(Point pos)
-//    {
-//        return new Point(pos.x + PIECE_CENTER.x, pos.y + PIECE_CENTER.y);
-//    }
-//
-//    private Point getNewPoint(Point point)
-//    {
-//        int xIndex = (point.x - OFFSET_SIZE) / PIECE_SIZE;
-//        int yIndex = (point.y - OFFSET_SIZE) / PIECE_SIZE;
-//
-//        xIndex = PIECE_SIZE * xIndex + OFFSET_SIZE;
-//        yIndex = PIECE_SIZE * yIndex + OFFSET_SIZE;
-//        return new Point(xIndex, yIndex);
-//    }
-
     private void move(String move)
     {
-        final Matcher matcher = movePattern.matcher(move);
+        validMove = false;
+        if (oldPos.equals(newPos)) return;
 
+        final Matcher matcher = movePattern.matcher(move);
         if (matcher.find()) {
+            // Castling verify if the king did not move before
+            if (move.equals("e1g1")) if (moves.contains("e1")) return;
+            if (move.equals("e1c1")) if (moves.contains("e1")) return;
+            if (move.equals("e8g8")) if (moves.contains("e8")) return;
+            if (move.equals("e8c8")) if (moves.contains("e8")) return;
+
+            validMove = true;
+
             String oldPos = matcher.group(1);
             String newPos = matcher.group(2);
 
             int index = 0;
             for (Piece piece : pieces) {
-                if (piece.isAlive() && piece.contains(newPos) && piece.isEnemy(currentPiece)) {
-                    pieces[index].kill();
+                if (piece.isAlive() && piece.contains(newPos)) {
+                    if (piece.isEnemy(currentPiece)) {
+                        pieces[index].kill();
+                    } else {
+                        validMove = false;
+                        return;
+                    }
                     break;
                 }
                 index++;
@@ -297,12 +278,41 @@ public class Board
                 index++;
             }
 
-            // Castling verify if the king did not move before
-            if (move.equals("e1g1")) if (!moves.contains("e1")) move("h1f1");
-            if (move.equals("e8g8")) if (!moves.contains("e8")) move("h8f8");
-            if (move.equals("e1c1")) if (!moves.contains("e1")) move("a1d1");
-            if (move.equals("e8c8")) if (!moves.contains("e8")) move("a8d8");
+            if (move.equals("e1g1")) move("h1f1");
+            if (move.equals("e8g8")) move("h8f8");
+            if (move.equals("e1c1")) move("a1d1");
+            if (move.equals("e8c8")) move("a8d8");
         }
     }
 
+    private String toChessNotation(int x, int y)
+    {
+        String s = "";
+        s += (char) (x + 97);
+        s += (char) (7 - y + 49);
+        return s;
+    }
+
+    private String toChessNotation(double x, double y)
+    {
+        String s = "";
+        s += (char) ((x - OFFSET_SIZE) / PIECE_SIZE + 97);
+        s += (char) (8 - (y - OFFSET_SIZE) / PIECE_SIZE + 49);
+        return s;
+    }
+
+    private String toChessNotation(Point point)
+    {
+        String s = "";
+        s += (char) ((point.x - OFFSET_SIZE) / PIECE_SIZE + 97);
+        s += (char) ((point.y - OFFSET_SIZE) / PIECE_SIZE + 49);
+        return s;
+    }
+
+    private Point toCoordinates(char a, char b)
+    {
+        int x = (a - 97) * PIECE_SIZE + OFFSET_SIZE;
+        int y = (7 - b + 49) * PIECE_SIZE + OFFSET_SIZE;
+        return new Point(x, y);
+    }
 }
